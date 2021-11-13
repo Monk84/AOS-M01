@@ -20,7 +20,7 @@ int main(void)
 		printf("CHILD: exit");
         	exit(1);
 	default:
-		sleep(3);
+		sleep(20);
 		// child is zombie
         	printf("PARENT: Мy PID -- %d\n", getpid());
         	printf("PARENT: My PGID -- %d\n", getpgrp());

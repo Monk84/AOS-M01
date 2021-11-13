@@ -17,7 +17,7 @@ int main(void)
         	printf("CHILD: My PID -- %d\n", getpid());
         	printf("CHILD: My PGID -- %d\n", getpgrp());
         	printf("CHILD: My PPID -- %d\n", getppid());
-        	exit(12);
+        	exit(0);
 	default:
         	printf("PARENT: Мy PID -- %d\n", getpid());
         	printf("PARENT: My PGID -- %d\n", getpgrp());
