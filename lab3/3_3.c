@@ -17,7 +17,7 @@ void child_hndlr(int signum)
 int main(void)
 {
 	pid_t pids[10];
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		if ((pids[i] = fork()) < 0) {
 			perror("fork");
 			exit(1);

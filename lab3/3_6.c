@@ -23,8 +23,8 @@ int main(void)
 		break;
 	}
 	default:
-		printf("Sending to child signal %d\n", SIGSTOP);
-		kill(pid, SIGSTOP);
+		printf("Sending to child signal %d\n", SIGINT);
+		kill(pid, SIGINT);
 		wait_ret = wait(&retst);
 		if (WIFSIGNALED(retst))
 			printf("Child was stopped by signal %d\n", WTERMSIG(retst));

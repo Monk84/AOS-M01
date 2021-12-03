@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
+int main(int argc, char *argv[])
+{
+	pid_t pid;
+	int pipe_1[2], pipe_2[2];
+	ssize_t message_len;
+	char buf[256] = {0};
+	if (argc < 2) {
+		printf("Usage: %s pipetype(1 or 2)\n", argv[0]);
+		exit(1);
+	}
+	int type = atoi(argv[1]);
+	switch (type) {
+	case 1:
+		if (pipe(pipe_1) == -1) {
+			perror("pipe");
+			exit(1);
+		}
+		break;
+	case 2:
+		if (pipe2(pipe_1, 0) == -1) {
+			perror("pipe");
+			exit(1);
+		}
+		break;
+	};
+	if (pipe(pipe_1) == -1) {
+		perror("first pipe");
+		exit(1);
+	}
+	if (type == 2 && pipe(pipe_2) == -1) {
+		perror("second pipe");
+		exit(1);
+	}
+	switch(pid=fork()) {
+	case -1:
+        	perror("fork");
+        	exit(1);
+	case 0: {
+		char string[] = "message from child";
+		close(pipe_1[0]);
+		write(pipe_1[1], string, strlen(string) + 1);
+		close(pipe_1[1]);
+		close(pipe_2[1]);
+		message_len = read(pipe_2[0], buf, 255);
+		printf("Child - got message from parent: \"%s\"\n", buf);
+		close(pipe_2[0]);
+        	exit(0);
+	}
+	default: {
+		close(pipe_1[1]);
+		if ((message_len = read(pipe_1[0], buf, 255)) == -1)
+			printf("Parent - read error\n");
+		else
+			printf("Parent - got message from child: \"%s\"\n", buf);
+		close(pipe_1[0]);
+		char string[] = "message from parent";
+		close(pipe_2[0]);
+		write(pipe_2[1], string, strlen(string) + 1);
+		close(pipe_2[1]);
+		wait(NULL);
+	}
+	}
+	return 0;
+}

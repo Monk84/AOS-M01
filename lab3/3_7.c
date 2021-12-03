@@ -23,6 +23,11 @@ void three_four()
 	}
 }
 
+void dist(int signum)
+{
+	printf("Silently ignoring signal %d\n", signum);
+}
+
 void three_five()
 {
 	pid_t pid, wait_ret;
@@ -32,12 +37,14 @@ void three_five()
         	perror("fork");
         	exit(1); 
 	case 0: { // child
-		pause();	
-		break;
+		signal(SIGINT, dist);
+		pause();
+		exit(0);
 	}
 	default:
-		printf("Sending to child signal %d\n", SIGUSR1);
-		kill(pid, SIGUSR1);
+		printf("Sending to child signal %d\n", SIGINT);
+		sleep(1);
+		kill(pid, SIGINT);
 		wait_ret = wait(&retst);
 		if (WIFSIGNALED(retst))
 			printf("Child was stopped by signal %d\n", WTERMSIG(retst));
