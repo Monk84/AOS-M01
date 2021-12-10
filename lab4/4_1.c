@@ -1,9 +1,10 @@
+
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
-#define _GNU_SOURCE
-#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
@@ -25,22 +26,25 @@ int main(int argc, char *argv[])
 			perror("pipe");
 			exit(1);
 		}
-		break;
-	case 2:
-		if (pipe2(pipe_1, 0) == -1) {
+		if (pipe(pipe_2) == -1) {
 			perror("pipe");
 			exit(1);
 		}
 		break;
+	case 2:
+		if (pipe2(pipe_1, 0) == -1) {
+			perror("pipe2");
+			exit(1);
+		}
+		if (pipe2(pipe_2, 0) == -1) {
+			perror("pipe2");
+			exit(1);
+		}
+		break;
+	default:
+		printf("Invalid type!\n");
+		exit(1);
 	};
-	if (pipe(pipe_1) == -1) {
-		perror("first pipe");
-		exit(1);
-	}
-	if (type == 2 && pipe(pipe_2) == -1) {
-		perror("second pipe");
-		exit(1);
-	}
 	switch(pid=fork()) {
 	case -1:
         	perror("fork");
@@ -51,8 +55,12 @@ int main(int argc, char *argv[])
 		write(pipe_1[1], string, strlen(string) + 1);
 		close(pipe_1[1]);
 		close(pipe_2[1]);
-		message_len = read(pipe_2[0], buf, 255);
-		printf("Child - got message from parent: \"%s\"\n", buf);
+		if ((message_len = read(pipe_2[0], buf, 255)) == -1) {
+			printf("Child - read error!\n");
+			exit(1);
+		}
+		printf("Child - got message of len %lu from parent: \"%s\"\n", 
+									message_len, buf);
 		close(pipe_2[0]);
         	exit(0);
 	}
