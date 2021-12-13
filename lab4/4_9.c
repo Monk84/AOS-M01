@@ -14,7 +14,12 @@ int main(int argc, char *argv[])
 {
 	pid_t pids[2];
 	int fifofile;
-	struct flock wrlocker, unlocker, rlocker;
+	struct flock wrlocker, unlocker, rlocker, lockgetter;
+	lockgetter.l_type = F_WRLCK;
+	lockgetter.l_whence = SEEK_SET;
+	lockgetter.l_start = 0;
+	lockgetter.l_len = 0;
+	lockgetter.l_pid = 0;
 	wrlocker.l_type = F_WRLCK;
 	wrlocker.l_whence = SEEK_SET;
 	wrlocker.l_start = 0;
@@ -45,52 +50,70 @@ int main(int argc, char *argv[])
         		exit(1);
 		case 0: {
 			int mover = 0;
-			if ((fifofile = open(fname, O_RDWR|O_CREAT|O_TRUNC, 0777)) == -1) {
-				mover = sprintf(outbuf, "open fifofile!\n");
-				outbuf[mover] = 0;
-				write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-				exit(1);
-			}
-			while(1) {
-				if (i == 1) {
-					if (fcntl(fifofile, F_SETLKW, &rlocker) == -1) {
-						mover = sprintf(outbuf, 
-										"fcntl - cannot set rlock, so skip!\n");
+			if (i == 1) {
+				if ((fifofile = open(fname, O_RDONLY|O_CREAT|O_TRUNC, 
+																0777)) == -1) {
+						mover = sprintf(outbuf, "open fifofile!\n");
 						outbuf[mover] = 0;
 						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-						continue;
-					}
-					if ((message_len = read(fifofile, buf, 255)) == -1) {
-						mover = sprintf(outbuf, "Child - read() error!\n");
-						outbuf[mover] = 0;
-						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-						//printf("Errno %d\n", errno);
-						continue;
-					} else if (!message_len) {
-						continue;
-					} else {
-						buf[message_len] = 0;
-						mover = sprintf(outbuf, "Child %d - file contents: "
-																"%s\n", i, buf);
-						outbuf[mover] = 0;
-						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-					}
-					if (fcntl(fifofile, F_SETLKW, 
-										&unlocker) == -1) {
-						mover = sprintf(outbuf, "fcntl - cannot set unlock!\n");
-						outbuf[mover] = 0;
-						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-					}
+						exit(1);
 				}
-				else if (!i) { 
-					const char *string = "hello";
-					if (fcntl(fifofile, F_GETLK, &wrlocker) == -1) {
-						mover = sprintf(outbuf, "fcntl - cannot get current "
-														"lock, so continue!\n");
+                for (int j = 0; j < 10; ++j) {
+					//printf("I AM %d\n", getpid());
+					rlocker.l_pid = getpid();
+					unlocker.l_pid = getpid();
+						if (fcntl(fifofile, F_SETLKW, &rlocker) == -1) {
+							mover = sprintf(outbuf, 
+									"fcntl - cannot set rlock, so skip!\n");
+							outbuf[mover] = 0;
+							write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
+							continue;
+						}
+						if ((message_len = read(fifofile, buf, 255)) == -1) {
+							mover = sprintf(outbuf, "Child - read() error!\n");
+							outbuf[mover] = 0;
+							write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
+							//printf("Errno %d\n", errno);
+						} else if (!message_len) {
+						} else {
+							buf[message_len] = 0;
+							mover = sprintf(outbuf, "Child %d - file contents: "
+															"%s\n", i, buf);
+							outbuf[mover] = 0;
+							write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
+						}
+						if (fcntl(fifofile, F_SETLKW, 
+											&unlocker) == -1) {
+							mover = sprintf(outbuf, 
+											"fcntl - cannot set unlock!\n");
+							outbuf[mover] = 0;
+							write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
+						}
+						sleep(1);
+				}
+		    } else if (!i) {
+				if ((fifofile = open(fname, O_WRONLY|O_CREAT|O_TRUNC, 
+																0777)) == -1) {
+						mover = sprintf(outbuf, "open fifofile!\n");
 						outbuf[mover] = 0;
 						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-						continue;
-					}
+						exit(1);
+				}
+                for (int j = 0; j < 10; ++j) {
+				    const char *string = "hello";
+				    wrlocker.l_pid = getpid();
+				    unlocker.l_pid = getpid();
+				    lockgetter.l_pid = getpid();
+				    //if (fcntl(fifofile, F_GETLK, &lockgetter) == -1) {
+					//	mover = sprintf(outbuf, "fcntl - cannot get current "
+					//									"lock, so continue!\n");
+					//	printf("errno %d\n", errno);
+					//	outbuf[mover] = 0;
+					//	write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
+					//	continue;
+					//}
+					//printf("fifofile locked by %d\n", lockgetter.l_pid);
+					//printf("I AM %d\n", getpid());
 					if (fcntl(fifofile, F_SETLKW, 
 										&wrlocker) == -1) {
 						mover = sprintf(outbuf, "fcntl - cannot set wrlock, "
@@ -105,7 +128,6 @@ int main(int argc, char *argv[])
 						mover = sprintf(outbuf, "Child - write() error!\n");
 						outbuf[mover] = 0;
 						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
-						continue;
 					} else {
 						buf[message_len] = 0;
 						mover = sprintf(outbuf, "Child %d - sending \"%s\"\n", 
@@ -119,12 +141,13 @@ int main(int argc, char *argv[])
 						outbuf[mover] = 0;
 						write(STDOUT_FILENO, outbuf, strlen(outbuf) + 1);
 					}
+                    sleep(1);
 				}
 			}
-			close(fifofile);
-	        	exit(0);
+		close(fifofile);
+	    exit(0);
 		}
-		}
+	};
 	wait(NULL);
 	wait(NULL);
 	return 0;

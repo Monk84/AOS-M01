@@ -31,14 +31,15 @@ int main(int argc, char *argv[])
 				perror("open fifofile!\n");
 				exit(1);
 			}
-			while(1) {
+			for (int k = 0; k > -1; ++k) {
 				if (i == 1) {
+                    for (int j = 0; j < 1000000; ++j);
+
 					if ((message_len = read(fifofile, buf, 255)) == -1) {
 						printf("Child - read() error!\n");
 						printf("Errno %d\n", errno);
 						continue;
 					} else if (!message_len) {
-						printf("0");
 						continue;
 					} else {
 						buf[message_len] = 0;
@@ -47,7 +48,9 @@ int main(int argc, char *argv[])
 				}
 				else if (!i) { 
 					const char *string = "hello";
-					if ((message_len = write(fifofile, string, strlen(string) + 1)) == -1) {
+                    for (int j = 0; j < 1000000; ++j);
+
+					if ((message_len = write(fifofile, string, strlen(string))) == -1) {
 						printf("Child - write() error!\n");
 						printf("Errno %d\n", errno);
 						continue;

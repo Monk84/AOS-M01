@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 			perror("mknod");
 			exit(1);
 		}
-	if ((fifofile = open(fname, O_RDWR)) == -1) {
+	if ((fifofile = open(fname, O_RDWR|O_NDELAY)) == -1) {
 		perror("open fifofile!\n");
 		exit(1);
 	}
@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
 	case 0: {
 		while(1) {
 			if ((message_len = read(fifofile, buf, 255)) == -1) {
-				printf("Child - read() error!\n");
-				printf("Errno %d\n", errno);
+				//printf("Child - read() error!\n");
+				//printf("Errno %d\n", errno);
 				continue;
 			} else {
 				buf[message_len] = 0;

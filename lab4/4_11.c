@@ -46,51 +46,65 @@ int main(void)
         		perror("fork");
         		exit(1);
 		case 0: {
-			while(1) {
-				if (i == 1) {
-					const char *fail_setlk = "cannot set lock on STDIN!\n",
-						  	   *fail_read = "STDIN read error!\n",
-							   *fail_write = "pipe write error!\n",
-							   *fail_unlock = "cannot unlock STDIN!\n";
-				    close(piped[0]);
-					if (fcntl(STDIN_FILENO, F_SETLKW, &rlocker) == -1) {
-							//printf("cannot set lock on STDIN\n!");
+			if (i == 1) {
+				unlocker.l_pid = getpid();
+				rlocker.l_pid = getpid();
+				//fcntl(STDOUT_FILENO, F_SETLKW, &unlocker);
+				const char *fail_setlk = "cannot set lock on STDIN!\n",
+					  	   *fail_read = "STDIN read error!\n",
+						   *fail_write = "pipe write error!\n",
+						   *fail_unlock = "cannot unlock STDIN!\n";
+				close(piped[0]);
+				for (int j = 0; j < 15; ++j) {    
+                    if (fcntl(STDIN_FILENO, F_SETLKW, &rlocker) == -1) {
+				    write(STDOUT_FILENO, fail_setlk, strlen(fail_setlk) + 1);
+					//printf("cannot set lock on STDIN\n!");
 							continue;
 					}
 					if ((message_len = read(STDIN_FILENO, buf, 255)) == -1) {
-						printf("Child - read() error!\n");
-						printf("Errno %d\n", errno);
-						continue;
+						write(STDOUT_FILENO, fail_read, strlen(fail_read) + 1);
+						//printf("Child - read() error!\n");
+						//printf("Errno %d\n", errno);
 					} else {
 						buf[message_len] = 0;
+						//write(STDOUT_FILENO, , strlen(fail_read) + 1);
 						printf("Child %d - sending: %s\n", i, buf);
 						if ((message_len = write(piped[1], buf, 
 												 message_len)) == -1) {
-								printf("Child %d - write() error!, "
-														"errno %d\n", i, errno);
-								continue;
+								write(STDOUT_FILENO, fail_write, 
+														strlen(fail_write) + 1);
+								//printf("Child %d - write() error!, "
+								//						"errno %d\n", i, errno);
 						}
 					}
 					if (fcntl(STDIN_FILENO, F_SETLKW, &unlocker) == -1)
-							printf("cannot unlock STDIN!\n");
-				} else if (!i) { 
-					const char *fail_setlk = "cannot set lock on STDOUT!\n",
-						  	   *fail_read = "pipe read error!\n",
-							   *fail_write = "STDOUT write error!\n",
-							   *fail_unlock = "cannot unlock STDOUT!\n";
-				    close(piped[1]);
-					fcntl(STDOUT_FILENO, F_GETLK, &getlock);
+						write(STDOUT_FILENO, fail_unlock, 
+														strlen(fail_unlock) + 1);
+						//	printf("cannot unlock STDIN!\n");
+				}
+            } else if (!i) { 
+				const char *fail_setlk = "cannot set lock on STDOUT!\n",
+					  	   *fail_read = "pipe read error!\n",
+						   *fail_write = "STDOUT write error!\n",
+						   *fail_unlock = "cannot unlock STDOUT!\n";
+				unlocker.l_pid = getpid();
+				wlocker.l_pid = getpid();
+				getlock.l_pid = 0;
+				close(piped[1]);
+				for (int j = 0; j < 15; ++j) {
+                    fcntl(STDOUT_FILENO, F_GETLK, &getlock);
 					printf("LOCK ON STDOUT by process %d\n", getlock.l_pid);
+				    printf("I AM %d\n", getpid());
 					if (fcntl(STDOUT_FILENO, F_SETLK, &wlocker) == -1) {
 							write(STDOUT_FILENO, fail_setlk, 
 														strlen(fail_setlk) + 1);
+							//printf("errno %d\n", errno);
 							continue;
 					}
 					if ((message_len = read(piped[0], buf, 255)) == -1) {
 						write(STDOUT_FILENO, fail_read, strlen(fail_read) + 1);
 						//printf("Child - read() error!\n");
 						//printf("Errno %d\n", errno);
-						continue;
 					} else {
 						buf[message_len] = 0;
 						//printf("Child %d - got: %s\n", i, buf);
@@ -100,10 +114,12 @@ int main(void)
 														strlen(fail_write) + 1);
 								//printf("Child %d - write() error!, "
 								//						"errno %d\n", i, errno);
-								continue;
+						} else {
+								const char *mess = " was read from pipe\n";
+								write(STDOUT_FILENO, mess, strlen(mess) + 1);
 						}
 					}
-					if (fcntl(STDOUT_FILENO, F_SETLK, &unlocker) == -1)
+					if (fcntl(STDOUT_FILENO, F_SETLKW, &unlocker) == -1)
 							write(STDOUT_FILENO, fail_unlock, strlen(fail_unlock) + 1);
 							//printf("cannot unlock STDOUT!\n");
 			    }
